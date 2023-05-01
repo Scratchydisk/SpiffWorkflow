@@ -1,3 +1,22 @@
+# Copyright (C) 2023 Sartography
+#
+# This file is part of SpiffWorkflow.
+#
+# SpiffWorkflow is free software; you can redistribute it and/or
+# modify it under the terms of the GNU Lesser General Public
+# License as published by the Free Software Foundation; either
+# version 3.0 of the License, or (at your option) any later version.
+#
+# SpiffWorkflow is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
+# 02110-1301  USA
+
 from copy import deepcopy
 
 from .version_1_1 import move_subprocesses_to_top
@@ -7,6 +26,7 @@ from .version_1_2 import (
     create_data_objects_and_io_specs,
     check_multiinstance,
     remove_loop_reset,
+    update_task_states,
 )
 
 def from_version_1_1(old):
@@ -36,6 +56,7 @@ def from_version_1_1(old):
     create_data_objects_and_io_specs(new)
     check_multiinstance(new)
     remove_loop_reset(new)
+    update_task_states(new)
     new['VERSION'] = "1.2"
     return new
 
@@ -53,6 +74,7 @@ def from_version_1_0(old):
     attributes based on the task states.
     """
     new = deepcopy(old)
+    new['VERSION'] = "1.1"
     move_subprocesses_to_top(new)
     return from_version_1_1(new)
 

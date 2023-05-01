@@ -1,13 +1,13 @@
-# -*- coding: utf-8 -*-
-
 # Copyright (C) 2012 Matthew Hampton
 #
-# This library is free software; you can redistribute it and/or
+# This file is part of SpiffWorkflow.
+#
+# SpiffWorkflow is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
 # License as published by the Free Software Foundation; either
-# version 2.1 of the License, or (at your option) any later version.
+# version 3.0 of the License, or (at your option) any later version.
 #
-# This library is distributed in the hope that it will be useful,
+# SpiffWorkflow is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 # Lesser General Public License for more details.
@@ -27,7 +27,6 @@ from SpiffWorkflow.bpmn.specs.events.event_definitions import NoneEventDefinitio
 
 from .ValidationException import ValidationException
 from ..specs.BpmnProcessSpec import BpmnProcessSpec
-from ..specs.data_spec import BpmnDataStoreSpecification
 from ..specs.events.EndEvent import EndEvent
 from ..specs.events.StartEvent import StartEvent
 from ..specs.events.IntermediateEvent import BoundaryEvent, IntermediateCatchEvent, IntermediateThrowEvent, EventBasedGateway
@@ -139,7 +138,6 @@ class BpmnParser(object):
         self.namespaces = namespaces or DEFAULT_NSMAP
         self.validator = validator
         self.process_parsers = {}
-        self.process_parsers_by_name = {}
         self.collaborations = {}
         self.process_dependencies = set()
         self.messages = {}
@@ -153,15 +151,13 @@ class BpmnParser(object):
             return self.PARSER_CLASSES[tag]
         return None, None
 
-    def get_process_parser(self, process_id_or_name):
+    def get_process_parser(self, process_id):
         """
         Returns the ProcessParser for the given process ID or name. It matches
         by name first.
         """
-        if process_id_or_name in self.process_parsers_by_name:
-            return self.process_parsers_by_name[process_id_or_name]
-        elif process_id_or_name in self.process_parsers:
-            return self.process_parsers[process_id_or_name]
+        if process_id in self.process_parsers:
+            return self.process_parsers[process_id]
 
     def get_process_ids(self):
         """Returns a list of process IDs"""
@@ -186,7 +182,19 @@ class BpmnParser(object):
         """
         for filename in filenames:
             with open(filename, 'r') as f:
-                self.add_bpmn_xml(etree.parse(f), filename=filename)
+                self.add_bpmn_io(f, filename)
+
+    def add_bpmn_io(self, file_like_object, filename=None):
+        """
+        Add the given BPMN file like object to the parser's set. 
+        """
+        self.add_bpmn_xml(etree.parse(file_like_object), filename)
+
+    def add_bpmn_str(self, bpmn_str, filename=None):
+        """
+        Add the given BPMN string to the parser's set. 
+        """
+        self.add_bpmn_xml(etree.fromstring(bpmn_str), filename)
 
     def add_bpmn_xml(self, bpmn, filename=None):
         """
@@ -288,35 +296,35 @@ class BpmnParser(object):
         parser = self.PROCESS_PARSER_CLASS(self, node, self.namespaces, self.data_stores, filename=filename, lane=lane)
         if parser.get_id() in self.process_parsers:
             raise ValidationException(f'Duplicate process ID: {parser.get_id()}', node=node, file_name=filename)
-        if parser.get_name() in self.process_parsers_by_name:
-            raise ValidationException(f'Duplicate process name: {parser.get_name()}', node=node, file_name=filename)
         self.process_parsers[parser.get_id()] = parser
-        self.process_parsers_by_name[parser.get_name()] = parser
 
     def get_process_dependencies(self):
         return self.process_dependencies
 
-    def get_spec(self, process_id_or_name):
+    def get_spec(self, process_id, required=True):
         """
         Parses the required subset of the BPMN files, in order to provide an
         instance of BpmnProcessSpec (i.e. WorkflowSpec)
         for the given process ID or name. The Name is matched first.
         """
-        parser = self.get_process_parser(process_id_or_name)
-        if parser is None:
+        parser = self.get_process_parser(process_id)
+        if required and parser is None:
             raise ValidationException(
-                f"The process '{process_id_or_name}' was not found. "
+                f"The process '{process_id}' was not found. "
                 f"Did you mean one of the following: "
                 f"{', '.join(self.get_process_ids())}?")
-        return parser.get_spec()
+        elif parser is not None:
+            return parser.get_spec()
 
-    def get_subprocess_specs(self, name, specs=None):
+    def get_subprocess_specs(self, name, specs=None, require_call_activity_specs=True):
         used = specs or {}
         wf_spec = self.get_spec(name)
         for task_spec in wf_spec.task_specs.values():
             if isinstance(task_spec, SubWorkflowTask) and task_spec.spec not in used:
-                used[task_spec.spec] = self.get_spec(task_spec.spec)
-                self.get_subprocess_specs(task_spec.spec, used)
+                subprocess_spec = self.get_spec(task_spec.spec, required=require_call_activity_specs)
+                used[task_spec.spec] = subprocess_spec
+                if subprocess_spec is not None:
+                    self.get_subprocess_specs(task_spec.spec, used)
         return used
 
     def find_all_specs(self):

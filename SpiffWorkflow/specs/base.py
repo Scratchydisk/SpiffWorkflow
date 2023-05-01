@@ -1,13 +1,13 @@
-# -*- coding: utf-8 -*-
-
-# Copyright (C) 2007 Samuel Abels
+# Copyright (C) 2007 Samuel Abels, 2023 Sartography
 #
-# This library is free software; you can redistribute it and/or
+# This file is part of SpiffWorkflow.
+#
+# SpiffWorkflow is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
 # License as published by the Free Software Foundation; either
-# version 2.1 of the License, or (at your option) any later version.
+# version 3.0 of the License, or (at your option) any later version.
 #
-# This library is distributed in the hope that it will be useful,
+# SpiffWorkflow is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 # Lesser General Public License for more details.
@@ -16,6 +16,7 @@
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
 # 02110-1301  USA
+
 from abc import abstractmethod
 
 from ..util.event import Event
@@ -302,15 +303,24 @@ class TaskSpec(object):
         :rtype: boolean or None
         :returns: the value returned by the task spec's run method.
         """
-        result = self._run_hook(my_task)
-        # Run user code, if any.
-        if self.ready_event.emit(my_task.workflow, my_task):
-            # Assign variables, if so requested.
-            for assignment in self.post_assign:
-                assignment.assign(my_task, my_task)
+        # I'm not sure I like setting the state here.  I'd like to handle it in `task` like
+        # the other transitions, and allow task specific error handling behavior.
+        # Having a task return a boolean indicating success (or None if it should just wait
+        # because the task is running) works well for scripts, but not for other types
+        # This is the easiest way of dealing with all other errors.
+        try:
+            result = self._run_hook(my_task)
+            # Run user code, if any.
+            if self.ready_event.emit(my_task.workflow, my_task):
+                # Assign variables, if so requested.
+                for assignment in self.post_assign:
+                    assignment.assign(my_task, my_task)
 
-        self.finished_event.emit(my_task.workflow, my_task)
-        return result
+            self.finished_event.emit(my_task.workflow, my_task)
+            return result
+        except Exception as exc:
+            my_task._set_state(TaskState.ERROR)
+            raise exc
 
     def _run_hook(self, my_task):
         """
@@ -371,6 +381,13 @@ class TaskSpec(object):
         """
         pass
 
+    def _on_error(self, my_task):
+        self._on_error_hook(my_task)
+    
+    def _on_error_hook(self, my_task):
+        """Can be overridden for task specific error handling"""
+        pass
+
     @abstractmethod
     def serialize(self, serializer, **kwargs):
         """
@@ -397,8 +414,8 @@ class TaskSpec(object):
                   'class': class_name,
                   'name':self.name,
                   'description':self.description,
-                  'inputs':[x.id for x in self.inputs],
-                  'outputs':[x.id for x in self.outputs],
+                  'inputs':[x.name for x in self.inputs],
+                  'outputs':[x.name for x in self.outputs],
                   'manual':self.manual,
                   'internal':self.internal,
                   'data':self.data,

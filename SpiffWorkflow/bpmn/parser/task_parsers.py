@@ -1,12 +1,13 @@
-# -*- coding: utf-8 -*-
 # Copyright (C) 2012 Matthew Hampton
 #
-# This library is free software; you can redistribute it and/or
+# This file is part of SpiffWorkflow.
+#
+# SpiffWorkflow is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
 # License as published by the Free Software Foundation; either
-# version 2.1 of the License, or (at your option) any later version.
+# version 3.0 of the License, or (at your option) any later version.
 #
-# This library is distributed in the hope that it will be useful,
+# SpiffWorkflow is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 # Lesser General Public License for more details.
@@ -83,13 +84,6 @@ class SubprocessParser:
         if not called_element:
             raise ValidationException(
                 'No "calledElement" attribute for Call Activity.',
-                node=task_parser.node,
-                file_name=task_parser.filename)
-        parser = task_parser.process_parser.parser.get_process_parser(called_element)
-        if parser is None:
-            raise ValidationException(
-                f"The process '{called_element}' was not found. Did you mean one of the following: "
-                f"{', '.join(task_parser.process_parser.parser.get_process_ids())}?",
                 node=task_parser.node,
                 file_name=task_parser.filename)
         return called_element

@@ -1,23 +1,13 @@
-# -*- coding: utf-8 -*-
-import ast
-import copy
-import sys
-import traceback
-import warnings
-
-from .PythonScriptEngineEnvironment import TaskDataEnvironment
-from ..exceptions import SpiffWorkflowException, WorkflowTaskException
-from ..operators import Operator
-
-
-# Copyright (C) 2020 Kelly McDonald
+# Copyright (C) 2020 Kelly McDonald, 2023 Sartography
 #
-# This library is free software; you can redistribute it and/or
+# This file is part of SpiffWorkflow.
+#
+# SpiffWorkflow is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
 # License as published by the Free Software Foundation; either
-# version 2.1 of the License, or (at your option) any later version.
+# version 3.0 of the License, or (at your option) any later version.
 #
-# This library is distributed in the hope that it will be useful,
+# SpiffWorkflow is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 # Lesser General Public License for more details.
@@ -26,6 +16,14 @@ from ..operators import Operator
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
 # 02110-1301  USA
+
+import ast
+import sys
+import traceback
+import warnings
+
+from .PythonScriptEngineEnvironment import TaskDataEnvironment
+from ..exceptions import SpiffWorkflowException, WorkflowTaskException
 
 
 class PythonScriptEngine(object):
@@ -40,10 +38,12 @@ class PythonScriptEngine(object):
     """
 
     def __init__(self, default_globals=None, scripting_additions=None, environment=None):
+
         if default_globals is not None or scripting_additions is not None:
             warnings.warn(f'default_globals and scripting_additions are deprecated.  '
                           f'Please provide an environment such as TaskDataEnvrionment',
                           DeprecationWarning, stacklevel=2)
+
         if environment is None:
             environment_globals = {}
             environment_globals.update(default_globals or {})
@@ -51,7 +51,6 @@ class PythonScriptEngine(object):
             self.environment = TaskDataEnvironment(environment_globals)
         else:
             self.environment = environment
-        self.error_tasks = {}
 
     def validate(self, expression):
         ast.parse(expression)
@@ -62,12 +61,7 @@ class PythonScriptEngine(object):
         return the result.
         """
         try:
-            if isinstance(expression, Operator):
-                # I am assuming that this takes care of some kind of XML
-                # expression judging from the contents of operators.py
-                return expression._matches(task)
-            else:
-                return self._evaluate(expression, task.data, external_methods)
+            return self._evaluate(expression, task.data, external_methods)
         except SpiffWorkflowException as se:
             se.add_note(f"Error evaluating expression '{expression}'")
             raise se
@@ -75,15 +69,11 @@ class PythonScriptEngine(object):
             raise WorkflowTaskException(f"Error evaluating expression '{expression}'", task=task, exception=e)
 
     def execute(self, task, script, external_methods=None):
-        """
-        Execute the script, within the context of the specified task
-        """
+        """Execute the script, within the context of the specified task."""
         try:
-            self.check_for_overwrite(task, external_methods or {})
-            self._execute(script, task.data, external_methods or {})
+            return self._execute(script, task.data, external_methods or {})
         except Exception as err:
             wte = self.create_task_exec_exception(task, script, err)
-            self.error_tasks[task.id] = wte
             raise wte
 
     def call_service(self, operation_name, operation_params, task_data):
@@ -120,21 +110,8 @@ class PythonScriptEngine(object):
             error_line = script.splitlines()[line_number - 1]
         return line_number, error_line
 
-    def check_for_overwrite(self, task, external_methods):
-        """It's possible that someone will define a variable with the
-        same name as a pre-defined script, rending the script un-callable.
-        This results in a nearly indecipherable error.  Better to fail
-        fast with a sensible error message."""
-        func_overwrites = set(self.environment.globals).intersection(task.data)
-        func_overwrites.update(set(external_methods).intersection(task.data))
-        if len(func_overwrites) > 0:
-            msg = f"You have task data that overwrites a predefined " \
-                  f"function(s). Please change the following variable or " \
-                  f"field name(s) to something else: {func_overwrites}"
-            raise WorkflowTaskException(msg, task=task)
-
     def _evaluate(self, expression, context, external_methods=None):
         return self.environment.evaluate(expression, context, external_methods)
 
     def _execute(self, script, context, external_methods=None):
-        self.environment.execute(script, context, external_methods)
+        return self.environment.execute(script, context, external_methods)

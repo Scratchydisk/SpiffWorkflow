@@ -1,3 +1,22 @@
+# Copyright (C) 2023 Sartography
+#
+# This file is part of SpiffWorkflow.
+#
+# SpiffWorkflow is free software; you can redistribute it and/or
+# modify it under the terms of the GNU Lesser General Public
+# License as published by the Free Software Foundation; either
+# version 3.0 of the License, or (at your option) any later version.
+#
+# SpiffWorkflow is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
+# 02110-1301  USA
+
 import glob
 import os
 
@@ -75,7 +94,19 @@ class BpmnDmnParser(BpmnParser):
         """
         for filename in filenames:
             with open(filename, 'r') as f:
-                self.add_dmn_xml(etree.parse(f).getroot(), filename=filename)
+                self.add_dmn_io(f, filename=filename)
+
+    def add_dmn_io(self, file_like_object, filename=None):
+        """
+        Add the given DMN file like object to the parser's set.
+        """
+        self.add_dmn_xml(etree.parse(file_like_object).getroot(), filename)
+
+    def add_dmn_str(self, dmn_str, filename=None):
+        """
+        Add the given DMN string to the parser's set.
+        """
+        self.add_dmn_xml(etree.fromstring(dmn_str), filename)
 
     def get_dependencies(self):
         return self.process_dependencies.union(self.dmn_dependencies)

@@ -1,13 +1,13 @@
-# -*- coding: utf-8 -*-
-
-# Copyright (C) 2012 Matthew Hampton
+# Copyright (C) 2012 Matthew Hampton, 2023 Sartography
 #
-# This library is free software; you can redistribute it and/or
+# This file is part of SpiffWorkflow.
+#
+# SpiffWorkflow is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
 # License as published by the Free Software Foundation; either
-# version 2.1 of the License, or (at your option) any later version.
+# version 3.0 of the License, or (at your option) any later version.
 #
-# This library is distributed in the hope that it will be useful,
+# SpiffWorkflow is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 # Lesser General Public License for more details.
@@ -16,7 +16,6 @@
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
 # 02110-1301  USA
-
 from ..exceptions import WorkflowDataException
 from ...operators import Operator
 from ...specs.base import TaskSpec
@@ -30,7 +29,7 @@ class _BpmnCondition(Operator):
         super(_BpmnCondition, self).__init__(*args)
 
     def _matches(self, task):
-        return task.workflow.script_engine.evaluate(task, self.args[0])
+        return task.workflow.script_engine.evaluate(task, self.args[0], external_methods=task.workflow.data)
 
 
 class BpmnSpecMixin(TaskSpec):

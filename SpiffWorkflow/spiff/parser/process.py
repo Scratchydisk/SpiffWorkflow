@@ -1,3 +1,22 @@
+# Copyright (C) 2023 Sartography
+#
+# This file is part of SpiffWorkflow.
+#
+# SpiffWorkflow is free software; you can redistribute it and/or
+# modify it under the terms of the GNU Lesser General Public
+# License as published by the Free Software Foundation; either
+# version 3.0 of the License, or (at your option) any later version.
+#
+# SpiffWorkflow is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
+# 02110-1301  USA
+
 import os
 
 from SpiffWorkflow.dmn.parser.BpmnDmnParser import BpmnDmnParser
@@ -53,9 +72,3 @@ class SpiffBpmnParser(BpmnDmnParser):
         full_tag('receiveTask'): (SpiffReceiveTaskParser, ReceiveTask),
         full_tag('businessRuleTask'): (BusinessRuleTaskParser, BusinessRuleTask)
     }
-
-    def create_parser(self, node, filename=None, lane=None):
-        parser = self.PROCESS_PARSER_CLASS(self, node, self.namespaces, self.data_stores, filename=filename, lane=lane)
-        if parser.get_id() in self.process_parsers:
-            raise ValidationException(f'Duplicate process ID: {parser.get_id()}', node=node, file_name=filename)
-        self.process_parsers[parser.get_id()] = parser
